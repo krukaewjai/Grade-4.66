@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เกมสุ่มชื่อตอบคำถาม การหารสั้น</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&family=Bai+Jamjuree:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --light-color: #f0f2f5;
+            --dark-color: #343a40;
+            --warning-color: #ffc107;
+        }
+
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: var(--light-color);
+            color: var(--dark-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        .screen {
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+            box-sizing: border-box;
+            position: absolute;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.5s ease-in-out, opacity 0.5s ease-in-out;
+        }
+
+        .screen.hidden {
+            transform: scale(0.9);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .screen.active {
+            transform: scale(1);
+            opacity: 1;
+        }
+        
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-family: 'Sarabun', sans-serif;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+        .btn:disabled { background-color: #ccc; cursor: not-allowed; }
+
+        /* --- Setup Screen --- */
+        #setup-screen h1 { font-family: 'Bai Jamjuree', sans-serif; color: var(--primary-color); }
+        #setup-screen textarea { width: 80%; height: 100px; padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 2px solid #ccc; }
+        .btn-start-game { background-color: var(--success-color); }
+
+
+        /* --- Quiz Screen --- */
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+        }
+        .quiz-header > div { flex: 1; }
+        #question-counter { text-align: left; color: var(--primary-color); font-family: 'Bai Jamjuree', sans-serif; }
+        #lives-display { text-align: right; }
+        #timer-display { font-family: 'Bai Jamjuree', sans-serif; color: var(--dark-color); }
+        #timer-display.low-time { color: var(--danger-color); animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        
+        /* Spin Container */
+        #spin-container h2 { font-family: 'Bai Jamjuree', sans-serif; color: var(--dark-color); }
+        .wheel-container { position: relative; width: 300px; height: 300px; margin: 10px auto; }
+        #wheel-canvas { width: 100%; height: 100%; transition: transform 5s cubic-bezier(0.1, 0.7, 0.3, 1); }
+        .wheel-pointer { position: absolute; top: 50%; right: -25px; transform: translateY(-50%); width: 0; height: 0; border-style: solid; border-width: 15px 0 15px 25px; border-color: transparent transparent transparent var(--danger-color); }
+        #spin-result { font-size: 1.5em; font-weight: bold; margin-top: 15px; color: var(--danger-color); min-height: 1.5em; }
+        .btn-spin { background-color: var(--warning-color); color: black; }
+
+        /* Question Container */
+        #question-container h2 { font-size: 3em; color: var(--primary-color); margin-bottom: 2rem; }
+        #question-container input { width: 150px; padding: 10px; font-size: 1.5em; text-align: center; border: 2px solid #ccc; border-radius: 8px; margin: 0 10px; }
+        .btn-submit { background-color: var(--success-color); }
+
+        /* --- Game Over Screen --- */
+        #game-over-screen h1 { font-family: 'Bai Jamjuree', sans-serif; font-size: 3em; color: var(--danger-color); }
+        #game-over-screen p { font-size: 1.8em; }
+
+    </style>
+</head>
+<body>
+
+    <div id="setup-screen" class="screen active">
+        <h1>เกมฝึกสมอง: การหารสั้น</h1>
+        <p>ใส่รายชื่อนักเรียน (1 ชื่อ ต่อ 1 บรรทัด)</p>
+        <textarea id="name-list">น้องพอใจ
+น้องใบบัว
+น้องต้นกล้า
+น้องภูผา
+น้องน้ำใส
+น้องออมสิน</textarea><br>
+        <button id="start-game-btn" class="btn btn-start-game">เริ่มเกม</button>
+    </div>
+
+    <div id="quiz-screen" class="screen hidden">
+        <div class="quiz-header">
+            <div id="question-counter">ข้อที่ 1 / 12</div>
+            <div id="timer-display">02:00</div>
+            <div id="lives-display">❤️❤️❤️</div>
+        </div>
+        
+        <div id="spin-container">
+            <h2>หมุนวงล้อหาผู้ตอบ!</h2>
+            <div class="wheel-container">
+                <canvas id="wheel-canvas" width="300" height="300"></canvas>
+                <div class="wheel-pointer"></div>
+            </div>
+            <div id="spin-result"></div>
+            <button id="spin-btn" class="btn btn-spin">หมุนวงล้อ!</button>
+        </div>
+
+        <div id="question-container" style="display: none;">
+            <h2>105 ÷ 3</h2>
+            <div class="answer-form">
+                <label>ผลหาร:</label>
+                <input type="number" id="quotient-input" placeholder="ตอบ">
+                <label>เศษ:</label>
+                <input type="number" id="remainder-input" placeholder="ตอบ" value="0">
+            </div>
+            <br>
+            <button id="submit-answer-btn" class="btn btn-submit">ส่งคำตอบ</button>
+        </div>
+    </div>
+
+    <div id="game-over-screen" class="screen hidden">
+        <h1>เกมจบแล้ว!</h1>
+        <p id="final-score">คะแนนรวม: 0</p>
+        <p id="final-message"></p>
+        <button id="restart-btn" class="btn">เล่นอีกครั้ง</button>
+    </div>
+
+<script>
+    // --- DOM Elements ---
+    const screens = {
+        setup: document.getElementById('setup-screen'),
+        quiz: document.getElementById('quiz-screen'),
+        gameOver: document.getElementById('game-over-screen')
+    };
+    const nameListInput = document.getElementById('name-list');
+    const startGameBtn = document.getElementById('start-game-btn');
+    const quizScreen = document.getElementById('quiz-screen');
+    const spinContainer = document.getElementById('spin-container');
+    const questionContainer = document.getElementById('question-container');
+    const canvas = document.getElementById('wheel-canvas');
+    const ctx = canvas.getContext('2d');
+    const spinBtn = document.getElementById('spin-btn');
+    const spinResult = document.getElementById('spin-result');
+    const questionCounter = document.getElementById('question-counter');
+    const timerDisplay = document.getElementById('timer-display');
+    const livesDisplay = document.getElementById('lives-display');
+    const questionTitle = document.querySelector('#question-container h2');
+    const quotientInput = document.getElementById('quotient-input');
+    const remainderInput = document.getElementById('remainder-input');
+    const submitAnswerBtn = document.getElementById('submit-answer-btn');
+    const finalScoreDisplay = document.getElementById('final-score');
+    const finalMessage = document.getElementById('final-message');
+    const restartBtn = document.getElementById('restart-btn');
+
+    // --- Game Data ---
+    const problems = [
+        { q: "105 ÷ 3", quotient: 35, remainder: 0 }, { q: "320 ÷ 8", quotient: 40, remainder: 0 },
+        { q: "1,236 ÷ 7", quotient: 176, remainder: 4 }, { q: "4,632 ÷ 4", quotient: 1158, remainder: 0 },
+        { q: "8,235 ÷ 9", quotient: 915, remainder: 0 }, { q: "9,443 ÷ 7", quotient: 1349, remainder: 0 },
+        { q: "14,728 ÷ 4", quotient: 3682, remainder: 0 }, { q: "70,323 ÷ 5", quotient: 14064, remainder: 3 },
+        { q: "91,400 ÷ 6", quotient: 15233, remainder: 2 }, { q: "162,073 ÷ 8", quotient: 20259, remainder: 1 },
+        { q: "426,186 ÷ 7", quotient: 60883, remainder: 5 }, { q: "817,189 ÷ 3", quotient: 272396, remainder: 1 }
+    ];
+
+    // --- Game State ---
+    let state = { names: [], currentQuestionIndex: 0, score: 0, lives: 3, timer: 120, timerInterval: null, isSpinning: false };
+    const colors = ["#ff8f00", "#ffa000", "#ffb300", "#ffc107", "#ffca28", "#ffd54f", "#ffe082", "#ffecb3"];
+
+    // --- Functions ---
+    function switchScreen(screenName) {
+        for (const key in screens) { screens[key].classList.remove('active'); screens[key].classList.add('hidden'); }
+        screens[screenName].classList.remove('hidden'); screens[screenName].classList.add('active');
+    }
+
+    function drawWheel() {
+        const numOptions = state.names.length;
+        if (numOptions === 0) { ctx.clearRect(0,0,300,300); return; }
+        const arcSize = (2 * Math.PI) / numOptions;
+        ctx.clearRect(0, 0, 300, 300);
+        ctx.font = 'bold 14px Sarabun';
+        for (let i = 0; i < numOptions; i++) {
+            const angle = i * arcSize;
+            ctx.fillStyle = colors[i % colors.length];
+            ctx.beginPath();
+            ctx.arc(150, 150, 150, angle, angle + arcSize);
+            ctx.lineTo(150, 150);
+            ctx.fill();
+            ctx.save();
+            ctx.fillStyle = "black";
+            ctx.translate(150 + Math.cos(angle + arcSize / 2) * 100, 150 + Math.sin(angle + arcSize / 2) * 100);
+            ctx.rotate(angle + arcSize / 2 + Math.PI / 2);
+            ctx.fillText(state.names[i], -ctx.measureText(state.names[i]).width / 2, 0);
+            ctx.restore();
+        }
+    }
+
+    function spin() {
+        if (state.isSpinning || state.names.length === 0) return;
+        state.isSpinning = true;
+        spinBtn.disabled = true;
+        spinResult.textContent = 'หมุน...';
+        
+        const spinAngle = Math.random() * 360 + 360 * 5;
+        canvas.style.transform = `rotate(${spinAngle}deg)`;
+
+        setTimeout(() => {
+            const finalAngle = spinAngle % 360;
+            const arcSizeDegrees = 360 / state.names.length;
+            const winningIndex = Math.floor((360 - finalAngle + 90) % 360 / arcSizeDegrees);
+            const winner = state.names[winningIndex];
+            spinResult.innerHTML = `ถึงตาของ: <span style="color:var(--primary-color);">${winner}</span>!`;
+            
+            setTimeout(() => {
+                spinContainer.style.display = 'none';
+                questionContainer.style.display = 'block';
+                loadQuestionData();
+                startTimer();
+            }, 2000); // Wait 2s to show winner before question
+        }, 5000); // 5s spin animation
+    }
+
+    function startGame() {
+        state.names = nameListInput.value.split('\n').filter(name => name.trim() !== '');
+        if (state.names.length < 2) { alert("กรุณาใส่รายชื่ออย่างน้อย 2 คน"); return; }
+        state.currentQuestionIndex = 0;
+        state.score = 0;
+        state.lives = 3;
+        drawWheel();
+        switchScreen('quiz');
+        prepareNextRound();
+    }
+    
+    function prepareNextRound() {
+        if (state.currentQuestionIndex >= problems.length || state.lives <= 0) {
+            endGame();
+            return;
+        }
+        updateUI();
+        spinResult.textContent = '';
+        state.isSpinning = false;
+        canvas.style.transition = 'none'; // reset transition for instant angle reset
+        canvas.style.transform = `rotate(0deg)`;
+        setTimeout(() => { canvas.style.transition = 'transform 5s cubic-bezier(0.1, 0.7, 0.3, 1)'; }, 10);
+        
+        questionContainer.style.display = 'none';
+        spinContainer.style.display = 'block';
+        spinBtn.disabled = false;
+    }
+
+    function loadQuestionData() {
+        const problem = problems[state.currentQuestionIndex];
+        questionTitle.textContent = problem.q;
+        quotientInput.value = '';
+        remainderInput.value = '';
+        quotientInput.focus();
+    }
+
+    function startTimer() {
+        state.timer = 120;
+        timerDisplay.classList.remove('low-time');
+        clearInterval(state.timerInterval);
+        state.timerInterval = setInterval(() => {
+            state.timer--;
+            const minutes = Math.floor(state.timer / 60);
+            const seconds = state.timer % 60;
+            timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            if (state.timer <= 10) timerDisplay.classList.add('low-time');
+            if (state.timer <= 0) handleAnswer(false);
+        }, 1000);
+    }
+    
+    function handleAnswer(isCorrect) {
+        clearInterval(state.timerInterval);
+        submitAnswerBtn.disabled = true;
+
+        quizScreen.style.transition = 'transform 0.2s';
+        if (isCorrect) {
+            state.score++;
+            quizScreen.style.transform = 'scale(1.02)';
+        } else {
+            state.lives--;
+            quizScreen.style.transform = 'translateX(10px)';
+        }
+
+        setTimeout(() => {
+            quizScreen.style.transform = 'translateX(0) scale(1)';
+            state.currentQuestionIndex++;
+            prepareNextRound();
+            submitAnswerBtn.disabled = false;
+        }, 1500);
+    }
+
+    function checkAnswer() {
+        const userQuotient = parseInt(quotientInput.value);
+        const userRemainder = parseInt(remainderInput.value) || 0;
+        const problem = problems[state.currentQuestionIndex];
+        const isCorrect = userQuotient === problem.quotient && userRemainder === problem.remainder;
+        handleAnswer(isCorrect);
+    }
+
+    function updateUI() {
+        questionCounter.textContent = `ข้อที่ ${state.currentQuestionIndex + 1} / ${problems.length}`;
+        livesDisplay.textContent = '❤️'.repeat(state.lives) + '🤍'.repeat(3 - state.lives);
+        timerDisplay.textContent = '02:00';
+    }
+    
+    function endGame() {
+        switchScreen('gameOver');
+        finalScoreDisplay.textContent = `คะแนนรวม: ${state.score}`;
+        finalMessage.textContent = state.lives > 0 ? 'ทำครบทุกข้อ ยอดเยี่ยมมาก! 🎉' : 'หัวใจหมดแล้ว ลองใหม่อีกครั้งนะ! 💪';
+    }
+
+    // --- Event Listeners ---
+    startGameBtn.addEventListener('click', startGame);
+    spinBtn.addEventListener('click', spin);
+    submitAnswerBtn.addEventListener('click', checkAnswer);
+    remainderInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') submitAnswerBtn.click(); });
+    restartBtn.addEventListener('click', () => switchScreen('setup'));
+
+</script>
+</body>
+</html>
