@@ -18,8 +18,8 @@
         }
 
         body {
-            font-family: 'Sarabun', sans-serif;
-            background-color: var(--light-color);
+            font-family: 'Chakra Petch', sans-serif;
+             background-image: url('https://lh5.googleusercontent.com/d/124vVXNGqcV1SOfh7rtDFghp1CHL13JUg');
             color: var(--dark-color);
             display: flex;
             justify-content: center;
@@ -60,7 +60,7 @@
             padding: 12px 25px;
             border-radius: 8px;
             font-size: 1.1em;
-            font-family: 'Sarabun', sans-serif;
+            font-family: 'Chakra Petch', sans-serif;
             cursor: pointer;
             margin: 5px;
             transition: all 0.3s;
@@ -93,8 +93,18 @@
         /* Spin Container */
         #spin-container h2 { font-family: 'Bai Jamjuree', sans-serif; color: var(--dark-color); }
         .wheel-container { position: relative; width: 300px; height: 300px; margin: 10px auto; }
-        #wheel-canvas { width: 100%; height: 100%; transition: transform 5s cubic-bezier(0.1, 0.7, 0.3, 1); }
-        .wheel-pointer { position: absolute; top: 50%; right: -25px; transform: translateY(-50%); width: 0; height: 0; border-style: solid; border-width: 15px 0 15px 25px; border-color: transparent transparent transparent var(--danger-color); }
+        #wheel-canvas { width: 100%; height: 100%; transition: transform 5s cubic-bezier(0.25, 0.1, 0.25, 1); }
+        .wheel-pointer { 
+            position: absolute; 
+            top: 50%; 
+            right: -20px; /* Pointer is on the right side */
+            transform: translateY(-50%); 
+            width: 0; 
+            height: 0; 
+            border-style: solid; 
+            border-width: 15px 0 15px 25px; 
+            border-color: transparent transparent transparent var(--danger-color); 
+        }
         #spin-result { font-size: 1.5em; font-weight: bold; margin-top: 15px; color: var(--danger-color); min-height: 1.5em; }
         .btn-spin { background-color: var(--warning-color); color: black; }
 
@@ -112,14 +122,17 @@
 <body>
 
     <div id="setup-screen" class="screen active">
-        <h1>เกมฝึกสมอง: การหารสั้น</h1>
+        <h1>เกมฝึกสมอง: การหาร</h1>
         <p>ใส่รายชื่อนักเรียน (1 ชื่อ ต่อ 1 บรรทัด)</p>
-        <textarea id="name-list">น้องพอใจ
-น้องใบบัว
-น้องต้นกล้า
-น้องภูผา
-น้องน้ำใส
-น้องออมสิน</textarea><br>
+        <textarea id="name-list">ตะวัน
+ณิชา
+กัญญ์
+อู่
+เจล
+ออแกน
+วีโก้
+กมลชัย
+วาวา</textarea><br>
         <button id="start-game-btn" class="btn btn-start-game">เริ่มเกม</button>
     </div>
 
@@ -162,11 +175,7 @@
 
 <script>
     // --- DOM Elements ---
-    const screens = {
-        setup: document.getElementById('setup-screen'),
-        quiz: document.getElementById('quiz-screen'),
-        gameOver: document.getElementById('game-over-screen')
-    };
+    const screens = { setup: document.getElementById('setup-screen'), quiz: document.getElementById('quiz-screen'), gameOver: document.getElementById('game-over-screen') };
     const nameListInput = document.getElementById('name-list');
     const startGameBtn = document.getElementById('start-game-btn');
     const quizScreen = document.getElementById('quiz-screen');
@@ -198,7 +207,7 @@
     ];
 
     // --- Game State ---
-    let state = { names: [], currentQuestionIndex: 0, score: 0, lives: 3, timer: 120, timerInterval: null, isSpinning: false };
+    let state = { names: [], currentQuestionIndex: 0, score: 0, lives: 3, timer: 120, timerInterval: null, isSpinning: false, currentAngle: 0 };
     const colors = ["#ff8f00", "#ffa000", "#ffb300", "#ffc107", "#ffca28", "#ffd54f", "#ffe082", "#ffecb3"];
 
     // --- Functions ---
@@ -235,14 +244,20 @@
         spinBtn.disabled = true;
         spinResult.textContent = 'หมุน...';
         
-        const spinAngle = Math.random() * 360 + 360 * 5;
-        canvas.style.transform = `rotate(${spinAngle}deg)`;
+        const spinAngle = Math.random() * 1000 + 2000; // Random spin force
+        state.currentAngle += spinAngle;
+        canvas.style.transform = `rotate(${state.currentAngle}deg)`;
 
         setTimeout(() => {
-            const finalAngle = spinAngle % 360;
-            const arcSizeDegrees = 360 / state.names.length;
-            const winningIndex = Math.floor((360 - finalAngle + 90) % 360 / arcSizeDegrees);
+            const numOptions = state.names.length;
+            const arcSizeDegrees = 360 / numOptions;
+            const finalAngle = state.currentAngle % 360;
+            const stoppedAngle = 360 - finalAngle; // The segment at the top (under pointer)
+            
+            // CORRECTED CALCULATION
+            const winningIndex = Math.floor(stoppedAngle / arcSizeDegrees);
             const winner = state.names[winningIndex];
+            
             spinResult.innerHTML = `ถึงตาของ: <span style="color:var(--primary-color);">${winner}</span>!`;
             
             setTimeout(() => {
@@ -251,7 +266,7 @@
                 loadQuestionData();
                 startTimer();
             }, 2000); // Wait 2s to show winner before question
-        }, 5000); // 5s spin animation
+        }, 5000); // 5s spin animation, must match CSS transition time
     }
 
     function startGame() {
@@ -260,6 +275,7 @@
         state.currentQuestionIndex = 0;
         state.score = 0;
         state.lives = 3;
+        state.currentAngle = 0;
         drawWheel();
         switchScreen('quiz');
         prepareNextRound();
@@ -273,9 +289,6 @@
         updateUI();
         spinResult.textContent = '';
         state.isSpinning = false;
-        canvas.style.transition = 'none'; // reset transition for instant angle reset
-        canvas.style.transform = `rotate(0deg)`;
-        setTimeout(() => { canvas.style.transition = 'transform 5s cubic-bezier(0.1, 0.7, 0.3, 1)'; }, 10);
         
         questionContainer.style.display = 'none';
         spinContainer.style.display = 'block';
